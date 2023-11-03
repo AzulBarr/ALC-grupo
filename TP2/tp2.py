@@ -13,6 +13,23 @@ import seaborn as sns
 # ============================================================================= 
 df_wine = pd.read_csv('wine.csv')
 df_wine.head()
+#%% Definición de funciones
+def promedio(df, nombre_columna):
+    avg = 0
+    for i in range(df.shape[0]):
+        avg += df.at[i, nombre_columna]
+    avg /= df.shape[0]
+    return avg
+
+def desvio_estandar(df, nombre_columna):
+    std = 0
+    avg = promedio(df, nombre_columna)
+    for i in range(df.shape[0]):
+        std += (df.at[i, nombre_columna] - avg) ** 2
+    std *= 1/(df.shape[0] - 1)
+    std = np.sqrt(std)
+    return std
+
 #%% División de variables
 # Ejercicio 1 b)
 variable_dependiente = 'Customer_Segment'
@@ -20,16 +37,20 @@ Y = df_wine[[variable_dependiente]]
 Xs = df_wine.drop(columns=variable_dependiente)
 
 del variable_dependiente
-#%% Normalización de los datos
+#%% Estandarización de los datos
 # Ejercicio 1 c)
-# Dado un dataFrame y una columna, normaliza la columna
+
+
+x = df_wine['Customer_Segment']
+# Dado un dataFrame y una columna, normaliza y centra la columna
 def centrar_normalizar(df, nombre_columna):
-    promedio = df[nombre_columna].mean()
-    std = df[nombre_columna].std()
+    avg = promedio(df, nombre_columna)
+    std = desvio_estandar(df, nombre_columna)
 
     for i in range(df.shape[0]):
         Xi = df.at[i, nombre_columna]
-        df.at[i, nombre_columna] = (Xi-promedio)/std
+        df.at[i, nombre_columna] = (Xi-avg)/std
+
 atributosXs = Xs.columns.values
 
 for i in range(13):
@@ -41,8 +62,21 @@ centrar_normalizar(Y, atributoY[0])
 del atributosXs, atributoY, i
 #%% Matriz de covarianza
 # Ejercicio 1 d)
+def calculoCov(df):
+    prom = np.mean(df, axis=0).values
+    PROM = np.tile(prom.reshape((len(prom), 1)), df.shape[0])
+    PROM = np.transpose(PROM)
+    B = df.values
+    B = B - PROM
+    Mcov = np.dot(B.T,B)/ 178
+    return Mcov
+
+Mcov = calculoCov(Xs)
+# armar la matriz de covarianza
 matriz_de_cov = np.cov(np.transpose(Xs))
-print(matriz_de_cov)
+print(matriz_de_cov - Mcov)
+
+del matriz_de_cov
 #%%
 # Ejercicio 1 e)
 # Dada una matriz, devuelve el máximo autovalor y el correspondiente autovector
@@ -55,23 +89,40 @@ def metodo_de_la_potencia(A):
         aval = (np.transpose(avect) @ A @ avect) / (np.transpose(avect) @ avect)
     return aval, avect
 
-A = matriz_de_cov
-A = np.array([[-16, 32], [32, -64]])
-print('Aval calculado: ', metodo_de_la_potencia(A)[0], 
-      'Avect calculado : ', metodo_de_la_potencia(A)[1])
+A = Mcov
+max_aval_cov = metodo_de_la_potencia(A)[0]
+avect_asoc_cov = metodo_de_la_potencia(A)[1]
+print('Aval máximo: ', max_aval_cov, 
+      'Avect asociado : ', avect_asoc_cov)
 
 del A
 #%%
 # Ejercicio 1 f)
-# Dada una matriz y una cantidad n, devuelve los n autovalores de módulo máximo
+# Dada una matriz simétrica y una cantidad n, devuelve los n autovalores de módulo máximo
 # y sus correspondientes autovectores
 def metodo_de_la_potencia_2(A,n):
     # Tomamos un vector cualquiera no nulo
     avect = np.random.rand(A.shape[0])
+    avect = np.reshape(avect, (A.shape[0], 1))
+    avects = []
+    avals = []
     k = 9999
     for _ in range(n):
         for _ in range(k):
             avect = (A @ avect) / np.linalg.norm(A @ avect,2)
             aval = (np.transpose(avect) @ A @ avect) / (np.transpose(avect) @ avect)
-        # completar
-    return avect, aval
+        avects.append(avect)
+        avals.append(aval)
+        A = A - (aval * (avect @ np.transpose(avect)) )
+    return avals, avects 
+
+A = Mcov
+n = 4
+avals_cov = metodo_de_la_potencia_2(A,n)[0]
+avects_asoc_cov = metodo_de_la_potencia_2(A,n)[1]
+print('Avals máximos: ', avals_cov, 
+      'Avects asociado : ', avects_asoc_cov)
+print('Avals reales: ', np.linalg.eigh(A)[0],
+      'Avects reales: ', np.linalg.eigh(A)[0])
+
+del A, n

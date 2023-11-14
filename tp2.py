@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+from sklearn.model_selection import train_test_split
 #%% Importación de datos
 # Ejercicio 1 a)
 
@@ -38,6 +39,9 @@ def transformarAMatriz(avects):
     for i in range(len(avects)):
         W[i] = avects[i].reshape(len(avects[0]))   
     return np.transpose(W)
+
+def distDosVec(v,w):
+    return np.linalg.norm(v-w,2)
 #%% División de variables
 # Ejercicio 1 b)
 
@@ -141,23 +145,21 @@ del A, n
 #%%
 # Ejercicio 1 g)
 
-def metodoDePCA(X, avects):
+def metodoDePCA(X, n):
+    cov = calculoCov(X)
+    avects = metodo_de_la_potencia_2(cov,n)[1]
     X = X.values
     W = avects
     return X @ W
 
 print(metodoDePCA(Xs, avects_asoc_cov))
 
-def distDosVec(v,w):
-    return np.linalg.norm(v-w,2)
-
 def kNN(X_test,Y_train,X_train,k,n):
-    avects_X_data = metodo_de_la_potencia_2(X_train.values,n)
-    X_data = metodoDePCA(X_train, avects_X_data)
+    X_data = metodoDePCA(X_train, n)
     Y_data = Y_train.values
     
     avects_X_pred = metodo_de_la_potencia_2(X_test.values,n)
-    X_pred = metodoDePCA(X_test, avects_X_pred)
+    X_pred = metodoDePCA(X_test, n)
     Y_pred = np.zeros(X_pred.shape[0])
     
     for i in range(X_pred.shape[0]):
@@ -172,11 +174,14 @@ def kNN(X_test,Y_train,X_train,k,n):
         Y_pred[i] = #label con mas apariciones
         
     return Y_pred
-    
 
-lista = [(9,6),(1,2),(3,5),(6,7)]
-lista = np.sort(lista)
+X_train, X_test, Y_train, Y_test = train_test_split(Xs, Y, test_size= 0.15, random_state= 7)
+k = 1
+n = 4
 #%%
+
+X_test = test
+
 
 # Centramos y estandarizamos df_wine y dividimos en datatest y data train
 # usar stratify para tener una distribución?¿

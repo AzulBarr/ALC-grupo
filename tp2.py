@@ -33,7 +33,7 @@ def desvio_estandar(df, nombre_columna):
     return std
 
 def transformarAMatriz(avects):
-    avects = np.array(avects_asoc_cov)
+    avects = np.array(avects)
     W = np.zeros((len(avects),len(avects[0])))
     for i in range(len(avects)):
         W[i] = avects[i].reshape(len(avects[0]))   

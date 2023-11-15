@@ -4,6 +4,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.model_selection import train_test_split
+
 #%% Importación de datos
 # Ejercicio 1 a)
 
@@ -42,6 +43,9 @@ def transformarAMatriz(avects):
 
 def distDosVec(v,w):
     return np.linalg.norm(v-w,2)
+
+def claveParaOrdenar(tupla):
+  return (tupla[0], -tupla[1])
 #%% División de variables
 # Ejercicio 1 b)
 
@@ -161,23 +165,28 @@ def kNN(X_test,Y_train,X_train,k,n):
     avects_X_pred = metodo_de_la_potencia_2(X_test.values,n)
     X_pred = metodoDePCA(X_test, n)
     Y_pred = np.zeros(X_pred.shape[0])
-    
+    labels = Y_train['Customer_Segment'].unique().tolist()
+
     for i in range(X_pred.shape[0]):
         k_vecinos = np.array(X_data.shape[0])
         for j in range(X_data.shape[0]):
             dist = distDosVec(X_pred[i], X_data[j])
             label = Y_data[j]
             k_vecinos[j] = (dist,label)
-        # Ordenamos por el primer elemento de la tupla
+        k_vecinos = sorted(k_vecinos, key=claveParaOrdenar)
         k_vecinos = k_vecinos[:k]
-        # Contamos el label con más apariciones
-        Y_pred[i] = #label con mas apariciones
+        segundos_elementos = [tupla[1] for tupla in k_vecinos]
+        repeticionesLabels = [segundos_elementos.count(labels[0]), segundos_elementos.count(labels[1]), segundos_elementos.count(labels[2])]
+        Y_pred[i] = labels[repeticionesLabels.index(max(datos))]
         
     return Y_pred
 
 X_train, X_test, Y_train, Y_test = train_test_split(Xs, Y, test_size= 0.15, random_state= 7)
 k = 1
 n = 4
+
+tuplas = [(2,4),(53,2),(9,1),(100,0),(1,5)]
+
 #%%
 
 X_test = test

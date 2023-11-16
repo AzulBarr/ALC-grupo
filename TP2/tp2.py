@@ -70,10 +70,9 @@ atributosXs = Xs.columns.values
 for i in range(13):
     centrar_normalizar(Xs, atributosXs[i])
 
-atributoY = Y.columns.values
-centrar_normalizar(Y, atributoY[0])
 
-del atributosXs, atributoY, i
+
+del atributosXs, i
 #%% Matriz de covarianza
 # Ejercicio 1 d)
 
@@ -154,7 +153,7 @@ def metodoDePCA(X, n):
     X = X.values
     W = avects
     return X @ W
-
+#actualizar en el colab
 n = 4
 print(metodoDePCA(Xs, n))
 
@@ -182,30 +181,35 @@ def kNN(X_test,Y_train,X_train,k,n):
         
     return Y_pred
 
-X_train, X_test, Y_train, Y_test = train_test_split(Xs, Y, test_size= 0.20, random_state= 7)
+variable_dependiente = 'Customer_Segment'
+Y = df_wine[[variable_dependiente]]
+Xs = df_wine.drop(columns=variable_dependiente)
+
+X_train, X_test, Y_train, Y_test = train_test_split(Xs, Y, test_size= 0.20, random_state= 7, stratify=Y)
 k = 1
 n = 4
 
 Y_pred = kNN(X_test, Y_train, X_train, k, n)
 print(Y_pred)
 
-del k, n
+del k, n, variable_dependiente
 #%%
 # Armo tabla que nos piden
-TABLA = pd.DataFrame(columns= ['Modelo PCA', 'Componente', 'Varianza explicada', 'Porcentaje', 'Acumulado'])
+TABLA = pd.DataFrame(columns= ['Modelo PCA', 'Componente', 'Varianza explicada', 'Porcentaje %', 'Acumulado %'])
 
-j = 0
+j = 0    
+Mcov = calculoCov(X_train)
+avals_cov = metodo_de_la_potencia_2(Mcov,13)[0]
+suma = sum(avals_cov)
 for i in range(1,5):
-    Mcov = calculoCov(X_train)
-    avals_cov = metodo_de_la_potencia_2(Mcov,i)[0]
-    suma = sum(avals_cov)
+
     if i == 1:
         TABLA.at[j,'Modelo PCA'] = '1 Componente Principal'
         TABLA.at[j, 'Componente'] = 1
         varianzaExplicada = avals_cov[0] / suma
         TABLA.at[j, 'Varianza explicada'] = varianzaExplicada
-        TABLA.at[j, 'Porcentaje'] = f'{varianzaExplicada * 100} %'
-        TABLA.at[j, 'Acumulado'] = '100 %'
+        TABLA.at[j, 'Porcentaje %'] = varianzaExplicada * 100
+        TABLA.at[j, 'Acumulado %'] = varianzaExplicada * 100
         j += 1
         
     else:        
@@ -215,9 +219,9 @@ for i in range(1,5):
             TABLA.at[j,'Modelo PCA'] = f'{i} Componentes Principales'
             TABLA.at[j, 'Componente'] = k 
             TABLA.at[j, 'Varianza explicada'] = varianzasExplicadas[k-1]
-            TABLA.at[j, 'Porcentaje'] = f'{varianzasExplicadas[k-1] * 100} %'
+            TABLA.at[j, 'Porcentaje %'] = varianzasExplicadas[k-1] * 100
             acumulado = sum(varianzasExplicadas)
-            TABLA.at[j, 'Acumulado'] = f'{acumulado * 100} %'
+            TABLA.at[j, 'Acumulado %'] = acumulado * 100
             j += 1
 
 # Varianza Explicada
@@ -231,20 +235,64 @@ for i in range(1,5):
 
 # ¿Quieren el porcentaje acumulado o la cantidad acumulada, sin porcentaje?
 
-
+TABLA.to_csv('Tabla.csv')
 
 X1 = metodoDePCA(X_train, 1)
+X1 = np.append(X1, Y_train.values, 1)
 X2 = metodoDePCA(X_train, 2)
+X2 = np.append(X2, Y_train.values, 1)
 X3 = metodoDePCA(X_train, 3)
-X4 = metodoDePCA(X_train, 4)
+X3 = np.append(X3, Y_train.values, 1)
+
+# Grafico con 1 componente principal
+labels = Y_train['Customer_Segment'].unique().tolist()
+for label in labels:
+    X = X1[X1[:, 1] == label]
+    plt.scatter(x=X[:, 0], y=np.zeros(X.shape[0]), label=f'Grupo {int(label)}')
 
 
-del j, i, TABLA, X1, X2, X3, X4, Mcov, avals_cov, suma, k, varianzaExplicada
-del varianzasExplicadas, acumulado
+# Grafico con 2 componentes principales
+
+for label in labels:
+    X = X2[X2[:, 2] == label]
+    plt.scatter(x=X[:, 0], y=X[:, 1], label=f'Grupo {int(label)}')
+
+# Grafico con 3 componentes principales
+
+ax = plt.axes(projection='3d')
+for label in labels:
+    X = X3[X3[:, 3] == label]
+    ax.scatter3D(xs=X[:,0], ys=X[:,1], zs=X[:,2], label=f'Grupo {int(label)}')
+
+
+
+del j, i, TABLA, X1, X2, X3, Mcov, avals_cov, suma, k, varianzaExplicada, X
+del varianzasExplicadas, acumulado, label, labels, ax
 #%% 
 del df_wine
 
+datos = np.array([
+    [1, 2, 3, 0],
+    [4, 5, 6, 1],
+    [7, 8, 9, 0]
+])
 
+# Separa los datos en grupos según la cuarta columna
+grupos = np.unique(datos[:, 3])
+
+# Crea un gráfico de dispersión para cada grupo
+for grupo in grupos:
+    datos_grupo = datos[datos[:, 3] == grupo]
+    plt.scatter(datos_grupo[:, 0], datos_grupo[:, 1], label=f'Grupo {int(grupo)}')
+
+# Configura las etiquetas y el título
+plt.xlabel('Eje X')
+plt.ylabel('Eje Y')
+plt.title('Gráfico de dispersión con grupos')
+plt.legend()  # Agrega la leyenda con los nombres de los grupos
+
+# Muestra el gráfico
+plt.show()
 
 
 

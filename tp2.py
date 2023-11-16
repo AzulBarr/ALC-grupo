@@ -4,7 +4,6 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.model_selection import train_test_split
-
 #%% Importación de datos
 # Ejercicio 1 a)
 
@@ -57,7 +56,6 @@ del variable_dependiente
 #%% Estandarización de los datos
 # Ejercicio 1 c)
 
-x = df_wine['Customer_Segment']
 # Dado un dataFrame y una columna, normaliza y centra la columna
 def centrar_normalizar(df, nombre_columna):
     avg = promedio(df, nombre_columna)
@@ -113,7 +111,7 @@ avect_asoc_cov = metodo_de_la_potencia(A)[1]
 print('Aval máximo: ', max_aval_cov, 
       'Avect asociado : ', avect_asoc_cov)
 
-del A
+del A, max_aval_cov, avect_asoc_cov
 #%%
 # Ejercicio 1 f)
 
@@ -145,7 +143,7 @@ print('Avals máximos: ', avals_cov,
 print('Avals reales: ', np.linalg.eigh(A)[0],
       'Avects reales: ', np.linalg.eigh(A)[0])
 
-del A, n
+del A, n, avals_cov, Mcov, avects_asoc_cov
 #%%
 # Ejercicio 1 g)
 
@@ -156,41 +154,44 @@ def metodoDePCA(X, n):
     W = avects
     return X @ W
 
-print(metodoDePCA(Xs, avects_asoc_cov))
+n = 4
+print(metodoDePCA(Xs, n))
+
 
 def kNN(X_test,Y_train,X_train,k,n):
     X_data = metodoDePCA(X_train, n)
     Y_data = Y_train.values
-    
-    avects_X_pred = metodo_de_la_potencia_2(X_test.values,n)
+    Mcov = calculoCov(X_train)
+    avects_X_pred = metodo_de_la_potencia_2(Mcov,n)
     X_pred = metodoDePCA(X_test, n)
     Y_pred = np.zeros(X_pred.shape[0])
     labels = Y_train['Customer_Segment'].unique().tolist()
 
     for i in range(X_pred.shape[0]):
-        k_vecinos = np.array(X_data.shape[0])
+        k_vecinos = []
         for j in range(X_data.shape[0]):
             dist = distDosVec(X_pred[i], X_data[j])
             label = Y_data[j]
-            k_vecinos[j] = (dist,label)
+            k_vecinos.append((dist,label))
         k_vecinos = sorted(k_vecinos, key=claveParaOrdenar)
         k_vecinos = k_vecinos[:k]
         segundos_elementos = [tupla[1] for tupla in k_vecinos]
         repeticionesLabels = [segundos_elementos.count(labels[0]), segundos_elementos.count(labels[1]), segundos_elementos.count(labels[2])]
-        Y_pred[i] = labels[repeticionesLabels.index(max(datos))]
+        Y_pred[i] = labels[repeticionesLabels.index(max(repeticionesLabels))]
         
     return Y_pred
 
-X_train, X_test, Y_train, Y_test = train_test_split(Xs, Y, test_size= 0.15, random_state= 7)
+X_train, X_test, Y_train, Y_test = train_test_split(Xs, Y, test_size= 0.20, random_state= 7)
 k = 1
 n = 4
 
-tuplas = [(2,4),(53,2),(9,1),(100,0),(1,5)]
+Y_pred = kNN(X_test, Y_train, X_train, k, n)
+print(Y_pred)
 
+del k, n
 #%%
-
-X_test = test
-
+TABLA = pd.DataFrame(columns= ['Modelo PCA', 'Componente', 'Varianza explicada', 'Porcentaje', 'Acumulado'])
+TABLA['Modelo PCA'] = ['1 Componente Principal', '2 Componentes Principales', '3 Componentes Principales', '4 Componentes Principales']
 
 # Centramos y estandarizamos df_wine y dividimos en datatest y data train
 # usar stratify para tener una distribución?¿

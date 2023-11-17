@@ -33,6 +33,15 @@ def desvio_estandar(df, nombre_columna):
     std = np.sqrt(std)
     return std
 
+# Dado un dataFrame y una columna, normaliza y centra la columna
+def centrar_normalizar(df, nombre_columna):
+    avg = promedio(df, nombre_columna)
+    std = desvio_estandar(df, nombre_columna)
+    
+    for i in range(df.shape[0]):
+        Xi = df.at[i, nombre_columna]
+        df.at[i, nombre_columna] = (Xi-avg)/std
+
 def transformarAMatriz(avects):
     avects = np.array(avects)
     W = np.zeros((len(avects),len(avects[0])))
@@ -55,22 +64,10 @@ Xs = df_wine.drop(columns=variable_dependiente)
 del variable_dependiente
 #%% Estandarización de los datos
 # Ejercicio 1 c)
-
-# Dado un dataFrame y una columna, normaliza y centra la columna
-def centrar_normalizar(df, nombre_columna):
-    avg = promedio(df, nombre_columna)
-    std = desvio_estandar(df, nombre_columna)
-
-    for i in range(df.shape[0]):
-        Xi = df.at[i, nombre_columna]
-        df.at[i, nombre_columna] = (Xi-avg)/std
-
 atributosXs = Xs.columns.values
 
 for i in range(13):
     centrar_normalizar(Xs, atributosXs[i])
-
-
 
 del atributosXs, i
 #%% Matriz de covarianza
@@ -88,7 +85,9 @@ def calculoCov(df):
 Mcov = calculoCov(Xs)
 # armar la matriz de covarianza
 matriz_de_cov = np.cov(np.transpose(Xs))
-print(matriz_de_cov - Mcov)
+
+#%%
+print(Mcov)
 
 del matriz_de_cov
 #%%
@@ -98,7 +97,7 @@ del matriz_de_cov
 def metodo_de_la_potencia(A):
     # Tomamos un vector cualquiera no nulo
     avect = np.random.rand(A.shape[0])
-    k = 9999
+    k = 99998
     for _ in range(k):
         avect = (A @ avect) / np.linalg.norm(A @ avect,2)
         aval = (np.transpose(avect) @ A @ avect) / (np.transpose(avect) @ avect)
@@ -107,8 +106,11 @@ def metodo_de_la_potencia(A):
 A = Mcov
 max_aval_cov = metodo_de_la_potencia(A)[0]
 avect_asoc_cov = metodo_de_la_potencia(A)[1]
+#%%
 print('Aval máximo: ', max_aval_cov, 
       'Avect asociado : ', avect_asoc_cov)
+print('Avals reales: ', np.linalg.eigh(A)[0][12],
+      'Avects reales: ', np.linalg.eigh(A)[1][12])
 
 del A, max_aval_cov, avect_asoc_cov
 #%%
@@ -138,10 +140,12 @@ A = Mcov
 n = 4
 avals_cov = metodo_de_la_potencia_2(A,n)[0]
 avects_asoc_cov = metodo_de_la_potencia_2(A,n)[1]
+#%%
 print('Avals máximos: ', avals_cov, 
       'Avects asociado : ', avects_asoc_cov)
 print('Avals reales: ', np.linalg.eigh(A)[0],
-      'Avects reales: ', np.linalg.eigh(A)[0])
+      'Avects reales: ', np.linalg.eigh(A)[1])
+
 
 del A, n, avals_cov, Mcov, avects_asoc_cov
 #%%
@@ -153,11 +157,11 @@ def metodoDePCA(X, n):
     X = X.values
     W = avects
     return X @ W
-#actualizar en el colab
+
 n = 4
-print(metodoDePCA(Xs, n))
+print(metodoDePCA(Xs, n).shape)
 
-
+# cambiarlo
 def kNN(X_test,Y_train,X_train,k,n):
     X_data = metodoDePCA(X_train, n)
     Y_data = Y_train.values
@@ -181,14 +185,20 @@ def kNN(X_test,Y_train,X_train,k,n):
         
     return Y_pred
 
+#%%
 variable_dependiente = 'Customer_Segment'
 Y = df_wine[[variable_dependiente]]
 Xs = df_wine.drop(columns=variable_dependiente)
 
-X_train, X_test, Y_train, Y_test = train_test_split(Xs, Y, test_size= 0.20, random_state= 7, stratify=Y)
+X_train, X_test, Y_train, Y_test = train_test_split(Xs, Y, test_size= 0.20, random_state= 5, stratify=Y)
 k = 1
 n = 4
 
+atributosXs = Xs.columns.values
+
+for i in range(13):
+    centrar_normalizar(Xs, atributosXs[i])
+#%%
 Y_pred = kNN(X_test, Y_train, X_train, k, n)
 print(Y_pred)
 
@@ -224,39 +234,30 @@ for i in range(1,5):
             TABLA.at[j, 'Acumulado %'] = acumulado * 100
             j += 1
 
-# Varianza Explicada
-
-# La forma es avali/ suma de avals de 1 hasta n
-# no entiendo si por ejemplo con dos componentes, n seria 2 o seria 13
-# asumo que es la primera opcion
-# ... ahora creo que es la segunda
-# preguntar, no habría que cambiar mucho
-
-
-# ¿Quieren el porcentaje acumulado o la cantidad acumulada, sin porcentaje?
-
+#%% 
 TABLA.to_csv('Tabla.csv')
-
+#%%
 X1 = metodoDePCA(X_train, 1)
 X1 = np.append(X1, Y_train.values, 1)
 X2 = metodoDePCA(X_train, 2)
 X2 = np.append(X2, Y_train.values, 1)
 X3 = metodoDePCA(X_train, 3)
 X3 = np.append(X3, Y_train.values, 1)
-
+#%%
 # Grafico con 1 componente principal
 labels = Y_train['Customer_Segment'].unique().tolist()
 for label in labels:
     X = X1[X1[:, 1] == label]
     plt.scatter(x=X[:, 0], y=np.zeros(X.shape[0]), label=f'Grupo {int(label)}')
 
-
+#%%
 # Grafico con 2 componentes principales
 
 for label in labels:
     X = X2[X2[:, 2] == label]
     plt.scatter(x=X[:, 0], y=X[:, 1], label=f'Grupo {int(label)}')
 
+#%%
 # Grafico con 3 componentes principales
 
 ax = plt.axes(projection='3d')
@@ -270,53 +271,4 @@ del j, i, TABLA, X1, X2, X3, Mcov, avals_cov, suma, k, varianzaExplicada, X
 del varianzasExplicadas, acumulado, label, labels, ax
 #%% 
 del df_wine
-
-datos = np.array([
-    [1, 2, 3, 0],
-    [4, 5, 6, 1],
-    [7, 8, 9, 0]
-])
-
-# Separa los datos en grupos según la cuarta columna
-grupos = np.unique(datos[:, 3])
-
-# Crea un gráfico de dispersión para cada grupo
-for grupo in grupos:
-    datos_grupo = datos[datos[:, 3] == grupo]
-    plt.scatter(datos_grupo[:, 0], datos_grupo[:, 1], label=f'Grupo {int(grupo)}')
-
-# Configura las etiquetas y el título
-plt.xlabel('Eje X')
-plt.ylabel('Eje Y')
-plt.title('Gráfico de dispersión con grupos')
-plt.legend()  # Agrega la leyenda con los nombres de los grupos
-
-# Muestra el gráfico
-plt.show()
-
-
-
-
-
-
-
-# Cambie metodo de la potencia 2 para que los avals los devuelva como lista de floats,
-# y no como lista de array, de array de floats
-
-
-
-
-
-# Centramos y estandarizamos df_wine y dividimos en datatest y data train
-# usar stratify para tener una distribución?¿
-
-# Hacer kNN de 1 a 4
-
-# Llenar la tabla
-
-# Graficar proyeccion T
-
-#
-
-
 

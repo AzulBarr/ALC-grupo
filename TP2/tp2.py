@@ -19,16 +19,16 @@ df_wine.head()
 
 def promedio(df, nombre_columna):
     avg = 0
-    for i in range(df.shape[0]):
-        avg += df.at[i, nombre_columna]
+    for i in df[nombre_columna]:
+       avg += i
     avg /= df.shape[0]
     return avg
 
 def desvio_estandar(df, nombre_columna):
     std = 0
     avg = promedio(df, nombre_columna)
-    for i in range(df.shape[0]):
-        std += (df.at[i, nombre_columna] - avg) ** 2
+    for i in df[nombre_columna]:
+        std += (i - avg) ** 2
     std *= 1/(df.shape[0] - 1)
     std = np.sqrt(std)
     return std
@@ -37,10 +37,11 @@ def desvio_estandar(df, nombre_columna):
 def centrar_normalizar(df, nombre_columna):
     avg = promedio(df, nombre_columna)
     std = desvio_estandar(df, nombre_columna)
-    
-    for i in range(df.shape[0]):
-        Xi = df.at[i, nombre_columna]
-        df.at[i, nombre_columna] = (Xi-avg)/std
+    nuevosValores = []
+    for i in df[nombre_columna]:
+        Xi = i
+        nuevosValores.append((Xi-avg)/std)
+    df[nombre_columna] = nuevosValores
 
 def transformarAMatriz(avects):
     avects = np.array(avects)
@@ -95,14 +96,15 @@ del matriz_de_cov
 
 # Dada una matriz, devuelve el máximo autovalor y el correspondiente autovector
 def metodo_de_la_potencia(A):
+    
     # Tomamos un vector cualquiera no nulo
     avect = np.random.rand(A.shape[0])
-    k = 99998
+    k = 9999
     for _ in range(k):
         avect = (A @ avect) / np.linalg.norm(A @ avect,2)
         aval = (np.transpose(avect) @ A @ avect) / (np.transpose(avect) @ avect)
     return aval, avect
-
+#%%
 A = Mcov
 max_aval_cov = metodo_de_la_potencia(A)[0]
 avect_asoc_cov = metodo_de_la_potencia(A)[1]
@@ -119,6 +121,7 @@ del A, max_aval_cov, avect_asoc_cov
 # Dada una matriz simétrica y una cantidad n, devuelve los n autovalores de módulo máximo
 # y sus correspondientes autovectores
 def metodo_de_la_potencia_2(A,n):
+    
     # Tomamos un vector cualquiera no nulo
     avect = np.random.rand(A.shape[0])
     avect = np.reshape(avect, (A.shape[0], 1))
@@ -135,7 +138,7 @@ def metodo_de_la_potencia_2(A,n):
         A = A - (aval * (avect @ np.transpose(avect)))
     avects = transformarAMatriz(avects)
     return avals, avects 
-
+#%%
 A = Mcov
 n = 4
 avals_cov = metodo_de_la_potencia_2(A,n)[0]
@@ -157,18 +160,27 @@ def metodoDePCA(X, n):
     X = X.values
     W = avects
     return X @ W
-
+#%%
 n = 4
 print(metodoDePCA(Xs, n).shape)
-
-# cambiarlo
-def kNN(X_test,Y_train,X_train,k,n):
+#%%
+def kNN(X_train,Y_train,X_test,k,n):
+    # Calculamos la proyección de los datos de train con el PCA
     X_data = metodoDePCA(X_train, n)
-    Y_data = Y_train.values
+
+    # Pasamos a matriz todo lo que sea df
+    Y_data = Y_train.values[:,0]
+    X_pred = X_test.values
+    # Centramos y estandarizamos los datos de test
+    for i in range(X_pred.shape[1]):
+      X_pred[:, i] = (X_pred[:, i] - promedios[i])/desvios_estandares[i]
+
+    # Proyectamos
     Mcov = calculoCov(X_train)
-    avects_X_pred = metodo_de_la_potencia_2(Mcov,n)
-    X_pred = metodoDePCA(X_test, n)
+    avects_X_pred = metodo_de_la_potencia_2(Mcov,n)[1]
+    X_pred = X_pred @ avects_X_pred
     Y_pred = np.zeros(X_pred.shape[0])
+
     labels = Y_train['Customer_Segment'].unique().tolist()
 
     for i in range(X_pred.shape[0]):
@@ -177,32 +189,42 @@ def kNN(X_test,Y_train,X_train,k,n):
             dist = distDosVec(X_pred[i], X_data[j])
             label = Y_data[j]
             k_vecinos.append((dist,label))
+        # Ordenamos la lista de menor a mayor para obtener los que más cerca están
         k_vecinos = sorted(k_vecinos, key=claveParaOrdenar)
         k_vecinos = k_vecinos[:k]
+        # Nos quedamos con los k vecinos
         segundos_elementos = [tupla[1] for tupla in k_vecinos]
+        # Ahora armamos una nueva lista solo con los labels para saber cuál es el que más se repite
         repeticionesLabels = [segundos_elementos.count(labels[0]), segundos_elementos.count(labels[1]), segundos_elementos.count(labels[2])]
         Y_pred[i] = labels[repeticionesLabels.index(max(repeticionesLabels))]
-        
-    return Y_pred
+        # Nos quedamos con el de mayor repeticiones
 
+    return Y_pred
 #%%
 variable_dependiente = 'Customer_Segment'
 Y = df_wine[[variable_dependiente]]
 Xs = df_wine.drop(columns=variable_dependiente)
 
 X_train, X_test, Y_train, Y_test = train_test_split(Xs, Y, test_size= 0.20, random_state= 5, stratify=Y)
+
+atributosX_train = X_train.columns.values
+
+promedios = []
+desvios_estandares = []
+for i in range(13):
+    promedios.append(promedio(X_train, atributosX_train[i]))
+    desvios_estandares.append(desvio_estandar(X_train, atributosX_train[i]))
+    centrar_normalizar(X_train, atributosX_train[i])
+
+#%%
 k = 1
 n = 4
-
-atributosXs = Xs.columns.values
-
-for i in range(13):
-    centrar_normalizar(Xs, atributosXs[i])
-#%%
-Y_pred = kNN(X_test, Y_train, X_train, k, n)
+Y_pred = kNN(X_train, Y_train, X_test, 1, 2)
 print(Y_pred)
+print(Y_pred - Y_test.values[:,0])
 
-del k, n, variable_dependiente
+
+del k, n
 #%%
 # Armo tabla que nos piden
 TABLA = pd.DataFrame(columns= ['Modelo PCA', 'Componente', 'Varianza explicada', 'Porcentaje %', 'Acumulado %'])
